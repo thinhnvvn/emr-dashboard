@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>EMR Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/framework7@7/framework7-bundle.min.css">
+
+  
+
+</head>
+<body>
+  <div class="navbar" style="margin-top: 10px; padding-bottom: 30px;">
+    <div class="navbar-inner">
+      <div class="title">EMR Dashboard</div>
+    </div>
+  </div>
+
+  <div class="page-content">
+    <div class="block">
+      <p id="patients">Đang tải dữ liệu bệnh nhân...</p>
+      <p id="visits"></p>
+      <p id="diagnoses"></p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/framework7@7/framework7-bundle.min.js"></script>
+  <script>
+    fetch('/api/summary')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('patients').textContent = `Tổng số bệnh nhân: ${data.total_patients}`;
+        document.getElementById('visits').textContent = `Tổng số lượt khám: ${data.total_visits}`;
+        document.getElementById('diagnoses').textContent = `Tổng số chẩn đoán: ${data.total_diagnoses}`;
+      })
+      .catch(err => {
+        document.getElementById('patients').textContent = 'Không thể tải dữ liệu.';
+        console.error('Lỗi API:', err);
+      });
+  </script>
+</body>
+</html>

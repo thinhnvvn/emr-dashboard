@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>EMR Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- thư viện chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  
+<canvas id="ageChart" width="400" height="200"></canvas>
+
+ 
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <h1 class="mb-4 text-center">📋 Danh sách bệnh nhân</h1>
+
+    <!-- Thống kê tổng quan -->
+    <div class="row mb-4 text-center" id="summary">
+      <div class="col-md-4">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">Tổng số bệnh nhân</h5>
+            <p class="display-6 text-primary" id="total-patients">...</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">Tổng số lượt khám</h5>
+            <p class="display-6 text-success" id="total-visits">...</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">Tổng số chẩn đoán</h5>
+            <p class="display-6 text-danger" id="total-diagnoses">...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 2 action ,menu-->
+    <br>
+    <div style="margin-bottom: 20px;">
+      <button onclick="showChart('age')" style="margin-right: 10px;">Phân bố độ tuổi</button>
+      <button onclick="showChart('diagnosis')">Tần suất chẩn đoán</button>
+    </div>
+    <br>
+    <br>
+
+    <ul>
+        <!--<li><a href="#" onclick="loadAnalysis()">Phân tích nâng cao</a></li>-->
+        <li><button onclick="loadAnalysis()">Phân tích nâng cao</button></li>
+
+    </ul>
+
+    <!--<div id="analysis-result" style="display:none;">-->
+    <div id="analysis-result" style="margin-top: 20px; font-weight: bold;">
+        <h3>Kết quả phân tích</h3>
+        <img id="cluster-image" src="" alt="Biểu đồ phân cụm" style="max-width:100%;">
+    </div>
+
+    <br>
+
+<canvas id="chartCanvas" width="800" height="400" style="display:none;"></canvas>
+
+
+    <!-- Bảng bệnh nhân -->
+    <table class="table table-bordered table-striped" id="patient-table">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th>
+          <th>Họ tên</th>
+          <th>Tuổi</th>
+          <th>Chẩn đoán</th>
+        </tr>
+      </thead>
+      <tbody id="patient-body">
+        <tr><td colspan="4" class="text-center">Đang tải dữ liệu...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // Gọi API /api/patients
+    fetch('/api/patients')
+      .then(res => res.json())
+      .then(data => {
+        const body = document.getElementById('patient-body');
+        body.innerHTML = '';
+        if (Array.isArray(data)) {
+          data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td>`;
+            body.appendChild(tr);
+          });
+        } else {
+          body.innerHTML = `<tr><td colspan="4" class="text-danger text-center">Không thể tải danh sách bệnh nhân.</td></tr>`;
+        }
+      })
+      .catch(err => {
+        document.getElementById('patient-body').innerHTML =
+          `<tr><td colspan="4" class="text-danger text-center">Không thể tải danh sách bệnh nhân.</td></tr>`;
+      });
+
+    // Gọi API /api/summary
+    fetch('/api/summary')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('total-patients').textContent = data.total_patients;
+        document.getElementById('total-visits').textContent = data.total_visits;
+        document.getElementById('total-diagnoses').textContent = data.total_diagnoses;
+      })
+      .catch(err => {
+        console.error("Lỗi khi tải thống kê:", err);
+      });
+  </script>
+
+  <script>
+    const resultDiv = document.getElementById("analysis-result");
+    if (resultDiv) {
+        //resultDiv.textContent = data.result;
+    } 
+  </script>
+
+  <!-- Vẽ biểu đồ -->
+  <script>
+  /* good
+  const ageData = [40, 54, 31, 36, 38, 35, 33, 60, 34, 46, 31, 30, 38, 27, 33, 44, 40, 47, 55, 43, 42, 50, 54];
+  const diagnosisData = [
+    "Influenza with other respiratory symptoms", "Influenza", "Anxiety disorder", "Migraine",
+    "Joint pain", "Ear infection", "General medical examination", "Asthma", "Sinus infection",
+    "Type 2 Diabetes", "Back pain", "High blood pressure", "Bronchitis", "Anemia",
+    "Seasonal allergy", "Stomach ulcer", "Common cold", "Thyroid disorder", "Depression",
+    "Skin rash", "Fatigue", "Eye infection", "Essential hypertension"
+  ];
+
+  function showChart(type) {
+    const canvas = document.getElementById('chartCanvas');
+    canvas.style.display = 'block';
+    const ctx = canvas.getContext('2d');
+    if (window.chartInstance) window.chartInstance.destroy();
+
+    if (type === 'age') {
+      window.chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: [...new Set(ageData)].sort((a,b) => a-b),
+          datasets: [{
+            label: 'Số lượng bệnh nhân',
+            data: [...new Set(ageData)].map(age => ageData.filter(a => a === age).length),
+            backgroundColor: 'skyblue'
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { title: { display: true, text: 'Phân bố độ tuổi bệnh nhân' } }
+        }
+      });
+    } else if (type === 'diagnosis') {
+      const counts = {};
+      diagnosisData.forEach(d => counts[d] = (counts[d] || 0) + 1);
+      window.chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(counts),
+          datasets: [{
+            label: 'Số lượng',
+            data: Object.values(counts),
+            backgroundColor: 'salmon'
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          plugins: { title: { display: true, text: 'Tần suất các chẩn đoán' } }
+        }
+      });
+    }
+  } 
+  */
+  </script>
+  <script>
+  const ageData = [40, 54, 31, 36, 38, 35, 33, 60, 34, 46, 31, 30, 38, 27, 33, 44, 40, 47, 55, 43, 42, 50, 54];
+  const diagnosisData = [
+    "Influenza with other respiratory symptoms", "Influenza", "Anxiety disorder", "Migraine",
+    "Joint pain", "Ear infection", "General medical examination", "Asthma", "Sinus infection",
+    "Type 2 Diabetes", "Back pain", "High blood pressure", "Bronchitis", "Anemia",
+    "Seasonal allergy", "Stomach ulcer", "Common cold", "Thyroid disorder", "Depression",
+    "Skin rash", "Fatigue", "Eye infection", "Essential hypertension"
+  ];
+
+  function showChart(type) {
+    const canvas = document.getElementById('chartCanvas');
+    canvas.style.display = 'block';
+    const ctx = canvas.getContext('2d');
+    if (window.chartInstance) window.chartInstance.destroy();
+
+    if (type === 'age') {
+      const ageCounts = {};
+      ageData.forEach(age => ageCounts[age] = (ageCounts[age] || 0) + 1);
+      const sortedAges = Object.keys(ageCounts).map(Number).sort((a,b) => a-b);
+      const counts = sortedAges.map(age => ageCounts[age]);
+
+      window.chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: sortedAges,
+          datasets: [{
+            label: 'Số lượng bệnh nhân',
+            data: counts,
+            backgroundColor: 'skyblue'
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: 'Phân bố độ tuổi bệnh nhân' }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Tuổi bệnh nhân' } },
+            y: { title: { display: true, text: 'Số lượng bệnh nhân' }, beginAtZero: true }
+          }
+        }
+      });
+    } else if (type === 'diagnosis') {
+      const diagCounts = {};
+      diagnosisData.forEach(d => diagCounts[d] = (diagCounts[d] || 0) + 1);
+      const labels = Object.keys(diagCounts);
+      const values = Object.values(diagCounts);
+
+      window.chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Số lượng',
+            data: values,
+            backgroundColor: 'salmon'
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          plugins: {
+            title: { display: true, text: 'Tần suất các chẩn đoán' }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Số lượng chẩn đoán' }, beginAtZero: true },
+            y: { title: { display: true, text: 'Loại chẩn đoán' } }
+          }
+        }
+      });
+    }
+  }
+  </script>
+
+
+
+
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+  
+</body>
+</html>
