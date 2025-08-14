@@ -16,8 +16,11 @@ def index():
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_db_connection():
-    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-    return conn
+    # conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+    # return conn
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL is not set")
+    return psycopg2.connect(DATABASE_URL, sslmode='require')
 
 def home():
     return render_template('index.html')
