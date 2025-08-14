@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, render_template
 from db_config import get_db_connection
-# from analysis import run_advanced_analysis
+from analysis import run_advanced_analysis
 from psycopg2.extras import RealDictCursor
 from datetime import date
 
@@ -12,6 +12,15 @@ def index():
 
 def home():
     return render_template('index.html')
+
+def run_advanced_analysis():
+    # Đây là hàm giả lập, bạn có thể thay bằng phân tích thực tế
+    return {
+        "most_common_diagnosis": "Cảm cúm",
+        "average_age": 42,
+        "total_patients": 128
+    }
+
 
 @app.route('/api/patients')
 def get_patients():
@@ -70,9 +79,9 @@ def get_summary():
 def analysis():
     try:
         # good cho vscode
-        # result = run_advanced_analysis()
-        # return jsonify(result)
-        return jsonify({"message": "Phân tích nâng cao chưa khả dụng trên Railway"})
+        result = run_advanced_analysis()
+        return jsonify(result)
+        # return jsonify({"message": "Phân tích nâng cao chưa khả dụng trên Railway"})
     except Exception as e:
         print("⚠️ Lỗi phân tích:", e)
         return jsonify({"error": "Không thể phân tích"}), 500
