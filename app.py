@@ -3,12 +3,21 @@ from db_config import get_db_connection
 # from project2.analysis_140825 import run_advanced_analysis
 from psycopg2.extras import RealDictCursor
 from datetime import date
+import psycopg2
+
 
 app = Flask(__name__)
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+# Railway injects DATABASE_URL automatically
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+def get_db_connection():
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+    return conn
 
 def home():
     return render_template('index.html')
@@ -27,14 +36,33 @@ def get_patients():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+        
+        # cur.execute("""
+        #     SELECT p.patient_id, p.full_name, p.date_of_birth,
+        #            COALESCE(string_agg(d.description, ', '), 'Chưa có') AS diagnosis
+        #     FROM patients p
+        #     LEFT JOIN visits v ON p.patient_id = v.patient_id
+        #     LEFT JOIN diagnoses d ON v.visit_id = d.visit_id
+        #     GROUP BY p.patient_id, p.full_name, p.date_of_birth
+        # """)
+        
         cur.execute("""
-            SELECT p.patient_id, p.full_name, p.date_of_birth,
-                   COALESCE(string_agg(d.description, ', '), 'Chưa có') AS diagnosis
+            SELECT 
+            p.patient_id, 
+            p.full_name, 
+            p.date_of_birth,
+            COALESCE(
+                NULLIF(string_agg(DISTINCT d.description, ', '), ''),
+                'Chưa có'
+            ) AS diagnosis
             FROM patients p
             LEFT JOIN visits v ON p.patient_id = v.patient_id
             LEFT JOIN diagnoses d ON v.visit_id = d.visit_id
             GROUP BY p.patient_id, p.full_name, p.date_of_birth
-        """)
+            ORDER BY p.full_name
+        """) 
+        
+        
         rows = cur.fetchall()
         cur.close()
         conn.close()
