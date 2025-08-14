@@ -1,10 +1,10 @@
 from flask import Flask, jsonify, render_template
-from db_config import get_db_connection
+# from db_config import get_db_connection
 # from project2.analysis_140825 import run_advanced_analysis
 from psycopg2.extras import RealDictCursor
 from datetime import date
 import psycopg2
-
+import os
 
 app = Flask(__name__)
 
