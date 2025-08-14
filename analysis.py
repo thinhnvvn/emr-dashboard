@@ -4,6 +4,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from datetime import datetime
+from datetime import date
+
 import os
 
 app = Flask(__name__)
@@ -12,6 +14,50 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     return render_template('index.html')
+
+def run_advanced_analysis():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Lấy thông tin bệnh nhân và chẩn đoán
+        cur.execute("""
+            SELECT p.date_of_birth, d.description
+            FROM patients p
+            LEFT JOIN visits v ON p.patient_id = v.patient_id
+            LEFT JOIN diagnoses d ON v.visit_id = d.visit_id
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        today = date.today()
+        ages = []
+        diagnoses = []
+
+        for dob, diagnosis in rows:
+            if dob:
+                age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+                ages.append(age)
+            if diagnosis:
+                diagnoses.append(diagnosis)
+
+        # Tính tuổi trung bình
+        avg_age = round(sum(ages) / len(ages), 1) if ages else None
+
+        # Chẩn đoán phổ biến nhất
+        most_common = Counter(diagnoses).most_common(1)
+        top_diagnosis = most_common[0][0] if most_common else "Không có dữ liệu"
+
+        return {
+            "average_age": avg_age,
+            "most_common_diagnosis": top_diagnosis,
+            "total_patients": len(ages)
+        }
+
+    except Exception as e:
+        print("⚠️ Lỗi phân tích nâng cao:", e)
+        return {"error": str(e)}
 
 # Route: Phân tích nâng cao
 @app.route('/api/analysis')
