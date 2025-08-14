@@ -41,8 +41,11 @@
 
 
 import os
+import os
 import psycopg2
 from sqlalchemy import create_engine
+
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 # Cấu hình kết nối — dùng biến môi trường nếu có, fallback về giá trị local
 DB_CONFIG = {

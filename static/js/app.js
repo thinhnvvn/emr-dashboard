@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadPatients();
 });
 
+
+
 function loadAnalysis() {
   fetch('/api/analysis')
     .then(response => {
@@ -60,7 +62,8 @@ function loadPatients() {
       const body = document.getElementById('patient-body');
       body.innerHTML = '';
 
-      if (data.status === 'success') {
+      //if (data.status === 'success') {
+      if (Array.isArray(data.patients)) {
         data.patients.forEach(row => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
